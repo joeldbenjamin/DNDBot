@@ -1,6 +1,10 @@
-FROM python:3.13
+FROM python:3.11-slim
+
 WORKDIR /Discord
+
 COPY requirements.txt /Discord
-RUN pip install -r requirements.txt
+RUN python -m pip install --no-cache-dir -r requirements.txt
+
 COPY . /Discord
-CMD python bot.py
+
+CMD ["python", "bot.py"]

@@ -2,10 +2,10 @@ from pathlib import Path
 import os
 
 # Bot
-DISCORD_PREFIX = "!"
+DISCORD_PREFIX = os.getenv("DISCORD_PREFIX", "!")
 
 # Paths
-ROOT = Path.cwd()
+ROOT = Path(__file__).resolve().parent
 DATA_FILE    = ROOT / "game_state.json"
 QUOTES_FILE  = ROOT / "quotes.json"
 EVENTS_FILE  = ROOT / "events.json"

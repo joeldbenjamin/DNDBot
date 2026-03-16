@@ -44,29 +44,17 @@ def _ensure_target_for_name(store: dict, maybe_name: Optional[str]) -> Tuple[str
     store.setdefault(pseudo_id, {"name": maybe_name, "count": 0})
     return pseudo_id, maybe_name
 
-def _totals_for_render_from_store(store: dict) -> Dict[str, int]:
-    """
-    The renderer expects 'totals' and then computes:
-        stash = totals - quiver - fired
-    We want to show stash = store["_stash"] exactly, so we feed:
-        totals := stash + quiver + fired
-    """
+def _quiver_by_name(store: dict) -> Dict[str, int]:
+    """Return {display_name: count} for all quiver entries with count > 0."""
     quiver: Dict[str, int] = {}
-    for k, v in (store or {}).items():
-        if isinstance(k, str) and not k.startswith("_"):
-            nm = (v.get("name") or "Ammo").strip()
-            ct = int(v.get("count", 0) or 0)
-            if ct > 0:
-                quiver[nm] = quiver.get(nm, 0) + ct
-
-    st = stash_all(store)           # display_name -> count
-    fired = fired_all(store)        # display_name -> count
-
-    names = set(quiver) | set(st) | set(fired)
-    totals: Dict[str, int] = {}
-    for nm in names:
-        totals[nm] = int(st.get(nm, 0)) + int(quiver.get(nm, 0)) + int(fired.get(nm, 0))
-    return totals
+    for iid, info in (store or {}).items():
+        if not isinstance(iid, str) or iid.startswith("_"):
+            continue
+        nm = (info.get("name") or "Ammo").strip()
+        ct = int(info.get("count", 0) or 0)
+        if ct > 0:
+            quiver[nm] = quiver.get(nm, 0) + ct
+    return quiver
 
 def _active_name(store: dict) -> str:
     aid = _active_id(store)
@@ -216,14 +204,7 @@ class AmmoCog(commands.Cog):
 
         # Show refreshed
         cap2 = int((store.get("_container") or {}).get("capacity") or 20)
-        quiver2: Dict[str, int] = {}
-        for iid, info in store.items():
-            if isinstance(iid, str) and not iid.startswith("_"):
-                continue
-            nm = (info.get("name") or "Ammo").strip()
-            ct = int(info.get("count", 0) or 0)
-            if ct > 0:
-                quiver2[nm] = quiver2.get(nm, 0) + ct
+        quiver2 = _quiver_by_name(store)
         stash2 = stash_all(store)
         fired2 = fired_all(store)
         e = ammo_status_embed(quiver2, stash2, fired2, _active_name(store), cap2)
@@ -314,14 +295,7 @@ class AmmoCog(commands.Cog):
         save_ammo_store(cid, store)
 
         cap2 = int((store.get("_container") or {}).get("capacity") or 20)
-        quiver2: Dict[str, int] = {}
-        for iid, info in store.items():
-            if isinstance(iid, str) and not iid.startswith("_"):
-                continue
-            nm = (info.get("name") or "Ammo").strip()
-            ct = int(info.get("count", 0) or 0)
-            if ct > 0:
-                quiver2[nm] = quiver2.get(nm, 0) + ct
+        quiver2 = _quiver_by_name(store)
         stash2 = stash_all(store)
         fired2 = fired_all(store)
         return await ctx.send(
@@ -353,13 +327,7 @@ class AmmoCog(commands.Cog):
         if len(toks) == 1 and _norm(toks[0]) == "-empty":
             store["_fired"] = {}
             save_ammo_store(cid, store)
-            quiver2: Dict[str, int] = {}
-            for iid, info in store.items():
-                if isinstance(iid, str) and not iid.startswith("_"):
-                    nm = (info.get("name") or "Ammo").strip()
-                    ct = int(info.get("count", 0) or 0)
-                    if ct > 0:
-                        quiver2[nm] = quiver2.get(nm, 0) + ct
+            quiver2 = _quiver_by_name(store)
             stash2 = stash_all(store)
             fired2 = fired_all(store)
             e = ammo_status_embed(quiver2, stash2, fired2, _active_name(store), cap)
@@ -429,13 +397,7 @@ class AmmoCog(commands.Cog):
         else:
             msg = f"Collected {', '.join(parts)} for **{tdisp}**."
 
-        quiver2: Dict[str, int] = {}
-        for iid, info in store.items():
-            if isinstance(iid, str) and not iid.startswith("_"):
-                nm = (info.get("name") or "Ammo").strip()
-                ct = int(info.get("count", 0) or 0)
-                if ct > 0:
-                    quiver2[nm] = quiver2.get(nm, 0) + ct
+        quiver2 = _quiver_by_name(store)
         stash2 = stash_all(store)
         fired2 = fired_all(store)
         e = ammo_status_embed(quiver2, stash2, fired2, _active_name(store), cap)
@@ -493,14 +455,7 @@ class AmmoCog(commands.Cog):
 
         save_ammo_store(cid, store)
         cap2 = int((store.get("_container") or {}).get("capacity") or 20)
-        quiver2: Dict[str, int] = {}
-        for iid, info in store.items():
-            if isinstance(iid, str) and not iid.startswith("_"):
-                continue
-            nm = (info.get("name") or "Ammo").strip()  # <-- fixed (no extra ')')
-            ct = int(info.get("count", 0) or 0)
-            if ct > 0:
-                quiver2[nm] = quiver2.get(nm, 0) + ct
+        quiver2 = _quiver_by_name(store)
         stash2 = stash_all(store)
         fired2 = fired_all(store)
         e = ammo_status_embed(quiver2, stash2, fired2, _active_name(store), cap2)
