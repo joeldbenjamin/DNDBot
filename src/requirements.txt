@@ -1,0 +1,4 @@
+# discord.py is NOT my bot
+discord.py
+python-dotenv
+aiohttp

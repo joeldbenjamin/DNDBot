@@ -1,0 +1,35 @@
+{
+  "czhMEN77mf4qQjdWs": {
+    "name": "Arrow",
+    "count": 13
+  },
+  "_active": "czhMEN77mf4qQjdWs",
+  "_container": {
+    "id": "iZHgmfCZ2ny6uLLqE",
+    "name": "Quiver",
+    "capacity": 20,
+    "equipped": true
+  },
+  "_fired": {
+    "arrow": 6
+  },
+  "jBDdrKPBkf6S9EtZX": {
+    "name": "Green-fletched Arrow",
+    "count": 0
+  },
+  "_stash_extra": {},
+  "_stash": {
+    "arrow": {
+      "name": "Arrow",
+      "count": 2
+    },
+    "green-fletched arrow": {
+      "name": "Green-fletched Arrow",
+      "count": 2
+    }
+  },
+  "manual::red-fleched arrow": {
+    "name": "Red-fleched Arrow",
+    "count": 0
+  }
+}

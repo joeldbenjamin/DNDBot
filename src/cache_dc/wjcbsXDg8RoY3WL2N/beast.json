@@ -1,0 +1,8 @@
+{
+  "name": "Portabella",
+  "type": "land",
+  "photo": "https://cdn.discordapp.com/attachments/1162858211217526914/1410056399936819330/Screenshot_20250826-192027.png?ex=68afa0db&is=68ae4f5b&hm=55d56977384cf17c8f9426234222d4712708eef164e93db4509c0397939dd5c3&",
+  "hp_current": 20,
+  "hp_auto": true,
+  "damage_type": "slashing"
+}

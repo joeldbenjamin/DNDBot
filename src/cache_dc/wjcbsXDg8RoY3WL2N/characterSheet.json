@@ -1,0 +1,136 @@
+{
+  "profile": {
+    "name": "Tinklefoot",
+    "classes_text": "Ranger 3",
+    "level_total": 3,
+    "prof_bonus": 2,
+    "hp_current": 28,
+    "hp_max": 28,
+    "ac": 16,
+    "photo": "https://cdn.discordapp.com/attachments/1383601383080595482/1386796278423486484/thinklefootoption06.png?ex=6868d9ee&is=6867886e&hm=133d2cebe7aa25812b51abfebe1e4d673d70466d430f5398a6eef3ee22315266&"
+  },
+  "abilities": {
+    "STR": {
+      "score": 12,
+      "mod": 1
+    },
+    "DEX": {
+      "score": 16,
+      "mod": 3
+    },
+    "CON": {
+      "score": 12,
+      "mod": 1
+    },
+    "INT": {
+      "score": 11,
+      "mod": 0
+    },
+    "WIS": {
+      "score": 14,
+      "mod": 2
+    },
+    "CHA": {
+      "score": 12,
+      "mod": 1
+    }
+  },
+  "saves": {
+    "CON": {
+      "bonus": 1
+    },
+    "STR": {
+      "bonus": 3
+    },
+    "WIS": {
+      "bonus": 2
+    },
+    "INT": {
+      "bonus": 0
+    },
+    "DEX": {
+      "bonus": 5
+    },
+    "CHA": {
+      "bonus": 1
+    }
+  },
+  "skills": {
+    "Deception": {
+      "bonus": 1,
+      "ability": "CHA"
+    },
+    "Arcana": {
+      "bonus": 0,
+      "ability": "INT"
+    },
+    "Acrobatics": {
+      "bonus": 3,
+      "ability": "DEX"
+    },
+    "Performance": {
+      "bonus": 1,
+      "ability": "CHA"
+    },
+    "Animal Handling": {
+      "bonus": 1,
+      "ability": "WIS"
+    },
+    "Intimidation": {
+      "bonus": 1,
+      "ability": "CHA"
+    },
+    "Medicine": {
+      "bonus": 1,
+      "ability": "WIS"
+    },
+    "Religion": {
+      "bonus": 0,
+      "ability": "INT"
+    },
+    "Survival": {
+      "bonus": 2,
+      "ability": "WIS"
+    },
+    "Perception": {
+      "bonus": 2,
+      "ability": "WIS"
+    },
+    "History": {
+      "bonus": 0,
+      "ability": "INT"
+    },
+    "Stealth": {
+      "bonus": 3,
+      "ability": "DEX"
+    },
+    "Persuasion": {
+      "bonus": 1,
+      "ability": "CHA"
+    },
+    "Investigation": {
+      "bonus": 2,
+      "ability": "INT"
+    },
+    "Nature": {
+      "bonus": 0,
+      "ability": "INT"
+    },
+    "Insight": {
+      "bonus": 1,
+      "ability": "WIS"
+    },
+    "Athletics": {
+      "bonus": 1,
+      "ability": "STR"
+    },
+    "Sleight of Hand": {
+      "bonus": 3,
+      "ability": "DEX"
+    }
+  },
+  "companion": {
+    "hp_current": 15,
+    "hp_max": 20
+  }
+}

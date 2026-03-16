@@ -1,0 +1,214 @@
+
+
+
+{
+  "schema_version": 1,
+  "notes": [
+    "This is a generic beast companion library for Land/Air/Sea companions.",
+    "Your Beast cog should: (1) read one of the types below; (2) compute modifiers from base_scores;",
+    "(3) evaluate simple formulas using variables RANGER_LEVEL, PB, and MOD.<ability> (e.g., MOD.STR).",
+    "HP/AC/Initiative/Attacks use string formulas so they scale with the Ranger's level and proficiency.",
+    "Attack math fields: to_hit_formula, damage_dice, damage_mod_formula, damage_type, reach."
+  ],
+
+  "variables": {
+    "RANGER_LEVEL": "Integer — player character's ranger level",
+    "PB": "Integer — proficiency bonus derived from RANGER_LEVEL",
+    "MOD.STR": "Strength modifier (computed from base_scores.STR)",
+    "MOD.DEX": "Dexterity modifier (computed from base_scores.DEX)",
+    "MOD.CON": "Constitution modifier (computed from base_scores.CON)",
+    "MOD.INT": "Intelligence modifier (computed from base_scores.INT)",
+    "MOD.WIS": "Wisdom modifier (computed from base_scores.WIS)",
+    "MOD.CHA": "Charisma modifier (computed from base_scores.CHA)"
+  },
+
+  "types": {
+    "land": {
+      "display_name": "Primal Companion (Land)",
+      "photo_default": null,
+      "size": "Medium",
+
+      "base_scores": {
+        "STR": 14,
+        "DEX": 14,
+        "CON": 15,
+        "INT": 8,
+        "WIS": 14,
+        "CHA": 11
+      },
+
+      "movement": {
+        "walk": 40,
+        "climb": 40,
+        "swim": 0,
+        "fly": 0
+      },
+
+      "senses": {
+        "darkvision": 60,
+        "passive_perception_formula": "12"
+      },
+
+      "saving_throw_proficiencies": ["str", "dex", "con"],
+      "skill_proficiencies": ["perception", "stealth", "survival"],
+
+      "armor_class_formula": "13 + CHARMOD.WIS",
+      "hp_formula": "5 + 5 * RANGER_LEVEL",
+      "initiative_formula": "MOD.DEX",
+
+      "damage_resistances": [],
+      "damage_immunities": [],
+      "condition_immunities": [],
+
+      "features": [
+        "Bestial Fury: Advantage on checks to track by scent.",
+        "Coordinated Assault: When commanded, the beast can use its reaction to aid the ranger’s attack (DMG ruling)."
+      ],
+
+      "attack_profiles": [
+        {
+          "name": "Beast's Strike",
+          "ability": "STR",
+          "to_hit_formula": "2 + CHARMOD.WIS",
+          "damage_dice": "1d8",
+          "damage_mod_formula": "2 + CHARMOD.WIS",
+          "damage_type": "slashing",
+          "reach": 5,
+          "flags": [ "charge" ],
+          "on_hit_extra": {
+            "charge": {
+              "extra_damage_dice": "1d6",
+              "note": "If the beast moved 20 ft straight toward the target before the hit, add this damage and the target is Prone (Large or smaller)."
+            }
+          }
+        },
+        {
+          "name": "Furry Tackle",
+          "ability": "STR",
+          "to_hit_formula": "2 + MOD.CHA + MOD.DEX",
+          "damage_dice": "0",
+          "damage_mod_formula": "0",
+          "damage_type": "Allergy",
+          "reach": 5,
+          "flags": [ "charge" ],
+          "on_hit_extra": {
+            "charge": {
+              "extra_damage_dice": "0",
+              "note": "The beast has targeted you ... for some love. It bumps its huge head against you, rubbing its face all over yours while vibrating its enormous body in pleasure."
+            }
+          }
+        }
+      ]
+    },
+
+    "air": {
+      "display_name": "Primal Companion (Air)",
+      "photo_default": null,
+      "size": "Small",
+
+      "base_scores": {
+        "STR": 10,
+        "DEX": 16,
+        "CON": 12,
+        "INT": 3,
+        "WIS": 12,
+        "CHA": 8
+      },
+
+      "movement": {
+        "walk": 10,
+        "climb": 0,
+        "swim": 0,
+        "fly": 60
+      },
+
+      "senses": {
+        "darkvision": 60,
+        "passive_perception_formula": "10 + MOD.WIS + (proficient_perception ? PB : 0)"
+      },
+
+      "saving_throw_proficiencies": ["dex", "con"],
+      "skill_proficiencies": ["perception", "stealth"],
+
+      "armor_class_formula": "12 + PB",
+      "hp_formula": "4 + 4 * RANGER_LEVEL",
+      "initiative_formula": "MOD.DEX",
+
+      "damage_resistances": [],
+      "damage_immunities": [],
+      "condition_immunities": [],
+
+      "features": [
+        "Flyby: Moving out of a creature’s reach doesn’t provoke opportunity attacks.",
+        "Keen Sight: Advantage on Wisdom (Perception) checks that rely on sight."
+      ],
+
+      "attack_profiles": [
+        {
+          "name": "Rend",
+          "ability": "DEX",
+          "to_hit_formula": "PB + MOD.DEX",
+          "damage_dice": "1d6",
+          "damage_mod_formula": "MOD.DEX",
+          "damage_type": "slashing",
+          "reach": 5
+        }
+      ]
+    },
+
+    "sea": {
+      "display_name": "Primal Companion (Sea)",
+      "photo_default": null,
+      "size": "Medium",
+
+      "base_scores": {
+        "CHA": 8,
+        "CON": 14,
+        "DEX": 12,
+        "INT": 3,
+        "STR": 14,
+        "WIS": 12
+      },
+
+      "movement": {
+        "walk": 10,
+        "climb": 0,
+        "swim": 40,
+        "fly": 0
+      },
+
+      "senses": {
+        "blindsight": 10,
+        "passive_perception_formula": "10 + MOD.WIS + (proficient_perception ? PB : 0)"
+      },
+
+      "saving_throw_proficiencies": ["str", "con"],
+      "skill_proficiencies": ["perception", "athletics"],
+
+      "armor_class_formula": "12 + PB",
+      "hp_formula": "5 + 5 * RANGER_LEVEL",
+      "initiative_formula": "MOD.DEX",
+
+      "damage_resistances": [],
+      "damage_immunities": [],
+      "condition_immunities": [],
+
+      "features": [
+        "Amphibious: The beast can breathe air and water.",
+        "Pack Hunter: Advantage on melee attack rolls against a creature if at least one of the beast’s allies is within 5 feet of the creature and the ally isn’t incapacitated."
+      ],
+
+      "attack_profiles": [
+        {
+          "name": "Bite",
+          "ability": "STR",
+          "to_hit_formula": "PB + MOD.STR",
+          "damage_dice": "1d8",
+          "damage_mod_formula": "MOD.STR",
+          "damage_type": "piercing",
+          "reach": 5
+        }
+      ]
+    }
+  }
+}
