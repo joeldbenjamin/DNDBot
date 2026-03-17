@@ -177,6 +177,13 @@ cython_debug/
 .vs/
 .vscode/
 
+# DNDBot runtime data (generated)
+src/cache_dc/
+src/dicecloud_links.json
+src/attack_aliases.json
+src/ammo_matchers.json
+src/characterSheet.json
+
 # Cursor  
 #  Cursor is an AI-powered code editor.`.cursorignore` specifies files/directories to 
 #  exclude from AI features like autocomplete and code analysis. Recommended for sensitive data

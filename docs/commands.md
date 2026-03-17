@@ -1,6 +1,6 @@
 ## Command Reference
 
-This page summarizes the main commands exposed by DNDBot. The actual prefix defaults to `!` but is configurable via `DISCORD_PREFIX`.
+This page summarizes the main commands exposed by DNDBot. The actual prefix defaults to `!` (set via `DISCORD_PREFIX` in `.env`).
 
 > In the examples below, `!` is used as the prefix.
 
@@ -58,6 +58,31 @@ See more detail in [`ammo.md`](./ammo.md).
     - If the weapon name and active ammo name “match” heuristically, the bot decrements 1 ammo and records it as fired.
     - If you have no ammo left, it shows an “out of ammo” embed.
     - If the weapon doesn’t match the active ammo, **no ammo is consumed**.
+    - After updating ammo, the bot forwards `!attack <resolved weapon>` back into the channel so Avrae (or another bot) can handle the actual roll.
+
+### Custom weapon ↔ ammo mappings
+
+- **`!ammomap <weapon text> -> <ammo text>`**
+  - **Description**: Add a custom mapping for your user so that weapon names containing `<weapon text>` consume ammo types whose name contains `<ammo text>`.
+  - **Example**: `!ammomap hand crossbow -> bolt`.
+
+- **`!ammomaps`**
+  - **Description**: List your current custom weapon↔ammo mappings.
+
+- **`!ammounmap <weapon text>`** or **`!ammounmap <weapon text> -> <ammo text>`**
+  - **Description**: Remove some or all mappings for a given weapon text.
+
+### Attack name aliases (for Avrae)
+
+- **`!attackmap <short> -> <full weapon name>`**
+  - **Description**: Map a short name to a full weapon name that should be sent to Avrae.
+  - **Example**: `!attackmap frank -> Light Crossbow` then `!attack frank` will consume ammo for the crossbow and then (if it weren’t a bot) send `!attack Light Crossbow` back into the channel.
+
+- **`!attackmaps`**
+  - **Description**: List your current attack name mappings.
+
+- **`!attackunmap <short>`**
+  - **Description**: Remove an attack alias mapping.
 
 ### Calendar / campaign commands
 

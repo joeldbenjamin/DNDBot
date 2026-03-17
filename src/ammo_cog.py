@@ -1,20 +1,94 @@
 from __future__ import annotations
-from typing import Optional, Dict, Tuple
+from typing import Optional, Dict, Tuple, List
 import re
+from pathlib import Path
 from discord.ext import commands
 
-from config import OUT_OF_AMMO_IMG
-from utils import make_embed, _norm
+from config import OUT_OF_AMMO_IMG, ROOT
+from utils import make_embed, _norm, json_safe_read, json_safe_write
 from dc import dc_links
 
 # render + local store only (no DC math here)
 from modules_Ammo.ammo_render import ammo_status_embed, ammo_help_embed
 from modules_Ammo.ammo_store import (
-    load_ammo_store, save_ammo_store,
-    total_quiver_count, count_for_name_in_quiver,
-    fired_get, fired_set, fired_add, fired_all,
-    stash_all, stash_get, stash_set, stash_add,
+    load_ammo_store,
+    save_ammo_store,
+    total_quiver_count,
+    count_for_name_in_quiver,
+    fired_get,
+    fired_set,
+    fired_add,
+    fired_all,
+    stash_all,
+    stash_get,
+    stash_set,
+    stash_add,
 )
+
+# ---------------- config / storage ----------------
+
+_AMMO_MATCHERS = [
+    # (weapon_substring, ammo_substring)
+    ("crossbow", "bolt"),
+    ("longbow", "arrow"),
+    ("shortbow", "arrow"),
+    ("bow", "arrow"),
+    ("sling", "bullet"),
+    ("blowgun", "dart"),
+    ("pistol", "bullet"),
+    ("rifle", "bullet"),
+    ("musket", "bullet"),
+    ("gun", "bullet"),
+]
+
+_AMMO_MATCH_FILE = ROOT / "ammo_matchers.json"
+_ATTACK_ALIAS_FILE = ROOT / "attack_aliases.json"
+
+
+def _load_custom_matchers() -> Dict[str, List[Dict[str, str]]]:
+    data = json_safe_read(_AMMO_MATCH_FILE, {})
+    return data if isinstance(data, dict) else {}
+
+
+def _save_custom_matchers(data: Dict[str, List[Dict[str, str]]]) -> None:
+    json_safe_write(_AMMO_MATCH_FILE, data)
+
+
+def _user_match_pairs(user_id: int) -> List[Tuple[str, str]]:
+    """Return list of (weapon_substring, ammo_substring) for this user plus global."""
+    data = _load_custom_matchers()
+    user_key = str(user_id)
+    pairs: List[Tuple[str, str]] = []
+    for scope in ("global", user_key):
+        entries = data.get(scope) or []
+        for entry in entries:
+            w = (entry.get("weapon") or "").strip()
+            a = (entry.get("ammo") or "").strip()
+            if w and a:
+                pairs.append((w, a))
+    return pairs
+
+
+def _load_attack_aliases() -> Dict[str, Dict[str, str]]:
+    data = json_safe_read(_ATTACK_ALIAS_FILE, {})
+    # Expected shape: { "<user_id>": { "<alias>": "<Weapon Name>", ... }, ... }
+    return data if isinstance(data, dict) else {}
+
+
+def _save_attack_aliases(data: Dict[str, Dict[str, str]]) -> None:
+    json_safe_write(_ATTACK_ALIAS_FILE, data)
+
+
+def _resolve_attack_alias(user_id: int, weapon: str) -> str:
+    """Return aliased weapon name for this user, or the original if none."""
+    data = _load_attack_aliases()
+    user_map = data.get(str(user_id)) or {}
+    w_norm = _norm(weapon)
+    for key, target in user_map.items():
+        if _norm(key) == w_norm and target:
+            return str(target)
+    return weapon
+
 
 # ---------------- local helpers ----------------
 
@@ -62,28 +136,25 @@ def _active_name(store: dict) -> str:
         return "Ammo"
     return store[aid].get("name") or "Ammo"
 
-# --- weapon ↔ ammo compatibility guard -----------------
-_AMMO_MATCHERS = [
-    # (weapon_substring, ammo_substring)
-    ("crossbow", "bolt"),
-    ("longbow",  "arrow"),
-    ("shortbow", "arrow"),
-    ("bow",      "arrow"),
-    ("sling",    "bullet"),
-    ("blowgun",  "dart"),
-    ("pistol",   "bullet"),
-    ("rifle",    "bullet"),
-    ("musket",   "bullet"),
-    ("gun",      "bullet"),
-]
-
-def weapon_uses_active_ammo(weapon_name: str, ammo_name: str) -> bool:
+def weapon_uses_active_ammo(
+    weapon_name: str,
+    ammo_name: str,
+    custom_pairs: Optional[List[Tuple[str, str]]] = None,
+) -> bool:
     """
     Heuristic map so melee weapons (e.g., shortsword) don't burn arrows.
     Both names matched case-insensitively by substring.
     """
     w = _norm(weapon_name or "")
     a = _norm(ammo_name or "")
+
+    # 1) User/global custom mappings
+    if custom_pairs:
+        for w_sub, a_sub in custom_pairs:
+            if _norm(w_sub) in w and _norm(a_sub) in a:
+                return True
+
+    # 2) Built-in defaults
     for w_sub, a_sub in _AMMO_MATCHERS:
         if w_sub in w and a_sub in a:
             return True
@@ -461,6 +532,195 @@ class AmmoCog(commands.Cog):
         e = ammo_status_embed(quiver2, stash2, fired2, _active_name(store), cap2)
         await ctx.send(embed=e)
 
+    # ---- custom weapon↔ammo mappings ----
+    @commands.command(name="ammomap")
+    async def ammo_map_cmd(self, ctx, *, mapping: str = ""):
+        """
+        Add a custom weapon↔ammo mapping for this user.
+          !ammomap <weapon text> -> <ammo text>
+        Example:
+          !ammomap hand crossbow -> bolt
+        """
+        if "->" not in mapping:
+            return await ctx.send(
+                "Usage: `!ammomap <weapon text> -> <ammo text>`\n"
+                "Example: `!ammomap hand crossbow -> bolt`"
+            )
+        left, right = mapping.split("->", 1)
+        weapon_sub = left.strip()
+        ammo_sub = right.strip()
+        if not weapon_sub or not ammo_sub:
+            return await ctx.send(
+                "Usage: `!ammomap <weapon text> -> <ammo text>`\n"
+                "Both sides must be non-empty."
+            )
+
+        data = _load_custom_matchers()
+        user_key = str(ctx.author.id)
+        entries = list(data.get(user_key) or [])
+
+        # Avoid exact duplicate
+        w_norm = _norm(weapon_sub)
+        a_norm = _norm(ammo_sub)
+        for e in entries:
+            if _norm(e.get("weapon", "")) == w_norm and _norm(e.get("ammo", "")) == a_norm:
+                break
+        else:
+            entries.append({"weapon": weapon_sub, "ammo": ammo_sub})
+            data[user_key] = entries
+            _save_custom_matchers(data)
+
+        await ctx.send(
+            f"✅ Mapped weapons containing `{weapon_sub}` to ammo containing `{ammo_sub}` for you."
+        )
+
+    @commands.command(name="ammomaps")
+    async def ammo_maps_cmd(self, ctx):
+        """
+        List your custom weapon↔ammo mappings.
+        """
+        data = _load_custom_matchers()
+        user_key = str(ctx.author.id)
+        entries = data.get(user_key) or []
+        if not entries:
+            return await ctx.send(
+                "You have no custom weapon↔ammo mappings. "
+                "Add one with `!ammomap <weapon text> -> <ammo text>`."
+            )
+
+        lines = [f"- `{e.get('weapon')}` → `{e.get('ammo')}`" for e in entries]
+        await ctx.send("Your custom ammo mappings:\n" + "\n".join(lines))
+
+    @commands.command(name="ammounmap")
+    async def ammo_unmap_cmd(self, ctx, *, mapping: str = ""):
+        """
+        Remove custom weapon↔ammo mappings.
+          !ammounmap <weapon text>
+          !ammounmap <weapon text> -> <ammo text>
+        """
+        if not mapping.strip():
+            return await ctx.send(
+                "Usage: `!ammounmap <weapon text>` or "
+                "`!ammounmap <weapon text> -> <ammo text>`."
+            )
+
+        weapon_sub = mapping
+        ammo_sub: Optional[str] = None
+        if "->" in mapping:
+            left, right = mapping.split("->", 1)
+            weapon_sub = left.strip()
+            ammo_sub = right.strip() or None
+
+        data = _load_custom_matchers()
+        user_key = str(ctx.author.id)
+        entries = list(data.get(user_key) or [])
+        if not entries:
+            return await ctx.send("You have no custom mappings to remove.")
+
+        w_norm = _norm(weapon_sub)
+        a_norm = _norm(ammo_sub) if ammo_sub else None
+
+        new_entries = []
+        removed = 0
+        for e in entries:
+            ew = _norm(e.get("weapon", ""))
+            ea = _norm(e.get("ammo", ""))
+            if ew != w_norm:
+                new_entries.append(e)
+                continue
+            if a_norm and ea != a_norm:
+                new_entries.append(e)
+                continue
+            removed += 1
+
+        if removed == 0:
+            return await ctx.send("No matching mapping found.")
+
+        data[user_key] = new_entries
+        _save_custom_matchers(data)
+        await ctx.send(f"Removed {removed} mapping(s) for `{weapon_sub}`.")
+
+    # ---- attack alias mappings (for Avrae forwarding) ----
+    @commands.command(name="attackmap")
+    async def attack_map_cmd(self, ctx, *, mapping: str = ""):
+        """
+        Map a short name to a full weapon name and optional attack bonuses.
+          $attackmap frank -> Light Crossbow
+          $attackmap frank -> Light Crossbow | +7 | 1d8+4
+        Then: !attack frank
+        """
+        if "->" not in mapping:
+            return await ctx.send(
+                "Usage:\n"
+                "`$attackmap <short> -> <weapon>`\n"
+                "or\n"
+                "`$attackmap <short> -> <weapon> | <to-hit bonus> | <damage expr>`\n"
+                "Examples:\n"
+                "`$attackmap frank -> Light Crossbow`\n"
+                "`$attackmap frank -> Light Crossbow | +7 | 1d8+4`"
+            )
+        left, right = mapping.split("->", 1)
+        short = left.strip()
+        right = right.strip()
+        if not short or not right:
+            return await ctx.send(
+                "Usage:\n"
+                "`$attackmap <short> -> <weapon>`\n"
+                "or\n"
+                "`$attackmap <short> -> <weapon> | <to-hit bonus> | <damage expr>`"
+            )
+
+        # Optional extended form: weapon | to-hit | damage
+        parts = [p.strip() for p in right.split("|")]
+        weapon_name = parts[0]
+        to_hit = parts[1] if len(parts) > 1 else ""
+        damage = parts[2] if len(parts) > 2 else ""
+
+        data = _load_attack_aliases()
+        user_key = str(ctx.author.id)
+        user_map = dict(data.get(user_key) or {})
+        # For simplicity we only store alias -> weapon name; attack math stays in Avrae.
+        user_map[short] = weapon_name
+        data[user_key] = user_map
+        _save_attack_aliases(data)
+
+        await ctx.send(f"✅ Mapped `{short}` to `{weapon_name}` for attacks.")
+
+    @commands.command(name="attackmaps")
+    async def attack_maps_cmd(self, ctx):
+        """List your custom attack name mappings."""
+        data = _load_attack_aliases()
+        user_key = str(ctx.author.id)
+        user_map = data.get(user_key) or {}
+        if not user_map:
+            return await ctx.send(
+                "You have no attack mappings. "
+                "Add one with `$attackmap <short> -> <weapon>`."
+            )
+        lines = [f"- `{alias}` → `{weapon}`" for alias, weapon in user_map.items()]
+        await ctx.send("Your attack mappings:\n" + "\n".join(lines))
+
+    @commands.command(name="attackunmap")
+    async def attack_unmap_cmd(self, ctx, *, short: str = ""):
+        """Remove an attack alias mapping."""
+        if not short.strip():
+            return await ctx.send("Usage: `!attackunmap <short name>`.")
+
+        data = _load_attack_aliases()
+        user_key = str(ctx.author.id)
+        user_map = dict(data.get(user_key) or {})
+        if short not in user_map and _norm(short) not in {_norm(k) for k in user_map}:
+            return await ctx.send(f"No attack mapping found for `{short}`.")
+
+        # Remove by normalized key
+        norm = _norm(short)
+        to_delete = [k for k in user_map if _norm(k) == norm]
+        for k in to_delete:
+            user_map.pop(k, None)
+        data[user_key] = user_map
+        _save_attack_aliases(data)
+        await ctx.send(f"Removed attack mapping(s) for `{short}`.")
+
     # ---- attack auto-decrement (+ add to fired) ----
     @commands.command(name="attack")
     async def attack_cmd(self, ctx, *, weapon: str):
@@ -481,11 +741,15 @@ class AmmoCog(commands.Cog):
         if not aid:
             return  # nothing to do
 
+        # Resolve attack alias first (so ammo heuristics see the full weapon name)
+        resolved_weapon = _resolve_attack_alias(ctx.author.id, weapon)
+
         ammo_name = store[aid].get("name") or "Ammo"
 
         # Only consume ammo if the weapon matches the active ammo.
-        # If not, silently do nothing (no message).
-        if not weapon_uses_active_ammo(weapon, ammo_name):
+        # First check user/global custom mappings, then built-ins.
+        pairs = _user_match_pairs(ctx.author.id)
+        if not weapon_uses_active_ammo(resolved_weapon, ammo_name, custom_pairs=pairs):
             return
 
         before = int(store[aid].get("count", 0))
@@ -499,13 +763,17 @@ class AmmoCog(commands.Cog):
         fired_add(store, ammo_name, per_use)
         save_ammo_store(cid, store)
 
+        # Just show ammo change; Avrae (or another bot) handles the actual attack roll.
         import asyncio
         await asyncio.sleep(0.5)
         await ctx.send(embed=make_embed(
-            f"{weapon}: ammo updated",
+            f"{resolved_weapon}: ammo updated",
             f"• {ammo_name}: {before} → {store[aid]['count']} (−{per_use})",
             None
         ))
+
+        # Forward to Avrae (or another bot) to handle the actual attack roll
+        await ctx.send(f"!attack {resolved_weapon}")
 
 __all__ = ["AmmoCog"]
 

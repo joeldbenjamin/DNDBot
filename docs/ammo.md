@@ -157,3 +157,38 @@ Before ammo commands work, you must be linked to a DiceCloud character:
   - If the weapon doesn’t plausibly use the active ammo (e.g. `!attack shortsword` while arrows are active):
     - The bot **does nothing** and consumes no ammo.
 
+### Custom weapon names
+
+If your weapon or ammo names don’t follow the built‑in patterns (like “crossbow” ↔ “bolt”, “longbow” ↔ “arrow”), you can teach the bot how to match them.
+
+#### Add a custom mapping
+
+```text
+!ammomap <weapon text> -> <ammo text>
+```
+
+Examples:
+
+- `!ammomap hand crossbow -> bolt`
+- `!ammomap laser rifle -> charge`
+
+The bot will then treat any weapon whose name contains `<weapon text>` as using ammo whose name contains `<ammo text>`, for **your** user.
+
+#### List your mappings
+
+```text
+!ammomaps
+```
+
+- Shows all custom weapon↔ammo mappings you’ve defined for your user.
+
+#### Remove mappings
+
+```text
+!ammounmap <weapon text>
+!ammounmap <weapon text> -> <ammo text>
+```
+
+- The first form removes **all** mappings for the given weapon text.
+- The second form removes only the specific weapon+ammo pair.
+
